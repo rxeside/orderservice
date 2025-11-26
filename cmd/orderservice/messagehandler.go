@@ -39,10 +39,8 @@ func messageHandler(logger logging.Logger) *cli.Command {
 			}
 			closer.AddCloser(databaseConnector)
 
-			// Проверка коннекта к БД
 			_ = mysql.NewConnectionPool(databaseConnector.TransactionalClient())
 
-			// RabbitMQ
 			amqpConnection := newAMQPConnection(cnf.AMQP, logger)
 			err = amqpConnection.Start()
 			if err != nil {
@@ -51,8 +49,6 @@ func messageHandler(logger logging.Logger) *cli.Command {
 			closer.AddCloser(libio.CloserFunc(func() error {
 				return amqpConnection.Stop()
 			}))
-
-			// Outbox/Consumer логику добавим позже
 
 			errGroup := errgroup.Group{}
 			errGroup.Go(func() error {

@@ -18,7 +18,7 @@ services:
       orderservice-db:
         condition: service_healthy
     networks:
-      - orderservice-net
+      - app-tier
 
   orderservice-message-handler:
     image: orderservice
@@ -43,7 +43,7 @@ services:
       orderservice-rmq:
         condition: service_healthy
     networks:
-      - orderservice-net
+      - app-tier
 
   orderservice-db:
     image: "mysql:8.3"
@@ -63,7 +63,7 @@ services:
       interval: 10s
       timeout: 30s
     networks:
-      - orderservice-net
+      - app-tier
 
   orderservice-rmq:
     image: "rabbitmq:4.2.0-management-alpine"
@@ -79,15 +79,12 @@ services:
       timeout: 3s
       retries: 30
     networks:
-      - orderservice-net
+      - app-tier
 
 volumes:
   orderservice-db-data:
   orderservice-rmq-data:
 
 networks:
-  orderservice-net:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.30.4.0/24
+  app-tier:
+    external: true

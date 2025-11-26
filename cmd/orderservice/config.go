@@ -17,10 +17,13 @@ type Service struct {
 	GracePeriod time.Duration `envconfig:"grace_period" default:"15s"`
 	GRPCAddress string        `envconfig:"grpc_address" default:":8081"`
 	HTTPAddress string        `envconfig:"http_address" default:":8082"`
+
+	ProductServiceAddr string `envconfig:"product_service_addr" default:"productservice:8081"`
+	UserServiceAddr    string `envconfig:"user_service_addr" default:"userservice:8081"`
 }
 
 type Database struct {
-	Order                 string        `envconfig:"order" required:"true"`
+	Order                 string        `envconfig:"user" required:"true"`
 	Password              string        `envconfig:"password" required:"true"`
 	Host                  string        `envconfig:"host" required:"true"`
 	Name                  string        `envconfig:"name" required:"true"`

@@ -5,20 +5,24 @@ import (
 
 	"github.com/google/uuid"
 
+	"orderservice/pkg/common/domain"
 	"orderservice/pkg/order/domain/model"
 )
 
 type OrderService interface {
 	CreateOrder(userID, productID uuid.UUID, price int64) (uuid.UUID, error)
-	// Методы для обновления статуса добавим, когда будем реализовывать Saga
 }
 
-func NewOrderService(repo model.OrderRepository) OrderService {
-	return &orderService{repo: repo}
+func NewOrderService(repo model.OrderRepository, dispatcher domain.EventDispatcher) OrderService {
+	return &orderService{
+		repo:       repo,
+		dispatcher: dispatcher,
+	}
 }
 
 type orderService struct {
-	repo model.OrderRepository
+	repo       model.OrderRepository
+	dispatcher domain.EventDispatcher
 }
 
 func (s *orderService) CreateOrder(userID, productID uuid.UUID, price int64) (uuid.UUID, error) {
@@ -43,6 +47,12 @@ func (s *orderService) CreateOrder(userID, productID uuid.UUID, price int64) (uu
 		return uuid.Nil, err
 	}
 
-	// Тут в будущем будет отправка события OrderCreated
-	return id, nil
+	// отправляем событие для хореографии
+	return id, s.dispatcher.Dispatch(model.OrderCreated{
+		OrderID:   id,
+		UserID:    userID,
+		ProductID: productID,
+		Price:     price,
+		CreatedAt: now,
+	})
 }

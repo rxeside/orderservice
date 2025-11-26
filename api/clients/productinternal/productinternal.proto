@@ -1,0 +1,31 @@
+syntax = "proto3";
+package Product;
+
+option go_package = "api/clients/productinternal;productinternal";
+
+service ProductInternalService {
+  rpc StoreProduct(StoreProductRequest) returns (StoreProductResponse);
+  rpc FindProduct(FindProductRequest) returns (FindProductResponse);
+}
+
+message StoreProductRequest {
+  Product product = 1;
+}
+
+message StoreProductResponse {
+  string productID = 1;
+}
+
+message FindProductRequest {
+  string productID = 1;
+}
+
+message FindProductResponse {
+  optional Product product = 1;
+}
+
+message Product {
+  string productID = 1;
+  string name = 2;
+  int64 price = 3;
+}

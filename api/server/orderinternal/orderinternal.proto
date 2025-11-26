@@ -1,7 +1,7 @@
 syntax = "proto3";
 package Order;
 
-option go_package = "/.;orderinternal";
+option go_package = "api/server/orderinternal;orderinternal";
 
 service OrderInternalService {
   rpc CreateOrder(CreateOrderRequest) returns (CreateOrderResponse);
@@ -11,7 +11,7 @@ service OrderInternalService {
 message CreateOrderRequest {
   string userID = 1;
   string productID = 2;
-  int64 price = 3; // Цена фиксируется в момент заказа
+  int64 price = 3;
 }
 
 message CreateOrderResponse {

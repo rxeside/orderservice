@@ -28,13 +28,12 @@ func (a *orderInternalAPI) CreateOrder(ctx context.Context, req *orderinternal.C
 		return nil, err
 	}
 
-	orderID, err := a.orderService.CreateOrder(ctx, userID, productID, req.Price)
+	orderID, err := a.orderService.CreateOrder(ctx, userID, productID)
 	if err != nil {
 		return nil, err
 	}
 	return &orderinternal.CreateOrderResponse{OrderID: orderID.String()}, nil
 }
-
 func (a *orderInternalAPI) FindOrder(ctx context.Context, req *orderinternal.FindOrderRequest) (*orderinternal.FindOrderResponse, error) {
 	orderID, err := uuid.Parse(req.OrderID)
 	if err != nil {
@@ -51,7 +50,7 @@ func (a *orderInternalAPI) FindOrder(ctx context.Context, req *orderinternal.Fin
 			UserID:    order.UserID.String(),
 			ProductID: order.ProductID.String(),
 			Price:     order.Price,
-			Status:    orderinternal.OrderStatus(order.Status), // nolint:gosec
+			Status:    orderinternal.OrderStatus(order.Status),
 		},
 	}, nil
 }
