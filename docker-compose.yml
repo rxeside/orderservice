@@ -1,0 +1,93 @@
+services:
+  orderservice:
+    image: orderservice
+    container_name: orderservice
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command:
+      - service
+    ports:
+      - "8084:8081"
+    environment:
+      ORDER_DATABASE_HOST: orderservice-db
+      ORDER_DATABASE_NAME: orderservice_db
+      ORDER_DATABASE_USER: orderservice
+      ORDER_DATABASE_PASSWORD: 12345Q
+    depends_on:
+      orderservice-db:
+        condition: service_healthy
+    networks:
+      - orderservice-net
+
+  orderservice-message-handler:
+    image: orderservice
+    container_name: orderservice-message-handler
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command:
+      - message-handler
+    environment:
+      ORDER_DATABASE_HOST: orderservice-db
+      ORDER_DATABASE_NAME: orderservice_db
+      ORDER_DATABASE_USER: orderservice
+      ORDER_DATABASE_PASSWORD: 12345Q
+
+      ORDER_AMQP_HOST: orderservice-rmq
+      ORDER_AMQP_USER: guest
+      ORDER_AMQP_PASSWORD: guest
+    depends_on:
+      orderservice-db:
+        condition: service_healthy
+      orderservice-rmq:
+        condition: service_healthy
+    networks:
+      - orderservice-net
+
+  orderservice-db:
+    image: "mysql:8.3"
+    container_name: orderservice-db
+    command: [ "--max_connections=100" ]
+    volumes:
+      - "orderservice-db-data:/var/lib/mysql"
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: yes
+      MYSQL_DATABASE: orderservice_db
+      MYSQL_USER: orderservice
+      MYSQL_PASSWORD: 12345Q
+    ports:
+      - "3309:3306"
+    healthcheck:
+      test: mysql -h127.0.0.1 -uroot -e 'SELECT 1'
+      interval: 10s
+      timeout: 30s
+    networks:
+      - orderservice-net
+
+  orderservice-rmq:
+    image: "rabbitmq:4.2.0-management-alpine"
+    container_name: orderservice-rmq
+    hostname: orderservice-rmq
+    ports:
+      - "15675:15672"
+    volumes:
+      - "orderservice-rmq-data:/var/lib/rabbitmq/mnesia"
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 1s
+      timeout: 3s
+      retries: 30
+    networks:
+      - orderservice-net
+
+volumes:
+  orderservice-db-data:
+  orderservice-rmq-data:
+
+networks:
+  orderservice-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.4.0/24

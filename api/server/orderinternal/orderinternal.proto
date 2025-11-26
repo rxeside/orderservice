@@ -1,0 +1,42 @@
+syntax = "proto3";
+package Order;
+
+option go_package = "/.;orderinternal";
+
+service OrderInternalService {
+  rpc CreateOrder(CreateOrderRequest) returns (CreateOrderResponse);
+  rpc FindOrder(FindOrderRequest) returns (FindOrderResponse);
+}
+
+message CreateOrderRequest {
+  string userID = 1;
+  string productID = 2;
+  int64 price = 3; // Цена фиксируется в момент заказа
+}
+
+message CreateOrderResponse {
+  string orderID = 1;
+}
+
+message FindOrderRequest {
+  string orderID = 1;
+}
+
+message FindOrderResponse {
+  optional Order order = 1;
+}
+
+message Order {
+  string orderID = 1;
+  string userID = 2;
+  string productID = 3;
+  int64 price = 4;
+  OrderStatus status = 5;
+}
+
+enum OrderStatus {
+  Created = 0;
+  Paid = 1;
+  Cancelled = 2;
+  Completed = 3;
+}
