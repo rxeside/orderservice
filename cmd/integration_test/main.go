@@ -8,6 +8,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
+	"orderservice/api/clients/paymentinternal"
 	"orderservice/api/clients/productinternal"
 	"orderservice/api/clients/userinternal"
 	"orderservice/api/server/orderinternal"
@@ -30,7 +31,7 @@ func main() {
 	prodResp, err := prodClient.StoreProduct(ctx, &productinternal.StoreProductRequest{
 		Product: &productinternal.Product{
 			Name:  "Super Laptop",
-			Price: 150000, // 1500.00 рубасов
+			Price: 150000,
 		},
 	})
 	if err != nil {
@@ -49,29 +50,44 @@ func main() {
 	}()
 	userClient := userinternal.NewUserInternalServiceClient(userConn)
 
-	// Создаем пользователя (Active = 1)
 	userResp, err := userClient.StoreUser(ctx, &userinternal.StoreUserRequest{
 		User: &userinternal.User{
-			Login:    "test_buyer",
+			Login:    "rich_buyer",
 			Status:   userinternal.UserStatus_Active,
-			Email:    toPtr("buyer@example.com"),
-			Telegram: toPtr("@test_buyer"),
+			Email:    toPtr("rich@example.com"),
+			Telegram: toPtr("@rich_buyer"),
 		},
 	})
 	if err != nil {
 		log.Fatalf("Failed to create user: %v", err)
 	}
-	fmt.Printf("User Created. ID: %s\n", userResp.UserID)
+	fmt.Printf("✅ User Created. ID: %s\n", userResp.UserID)
 
-	// 3. Создаем заказ через OrderService (Port 8084)
-	fmt.Println("\n--- Step 3: Creating Order via OrderService (localhost:8084) ---")
+	// 3. Пополняем баланс через PaymentService (Port 8083)
+	fmt.Println("\n Step 3: Depositing Money via PaymentService (localhost:8083)")
+	payConn, err := grpc.NewClient("localhost:8083", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatalf("Failed to connect to payment: %v", err)
+	}
+	defer func() { _ = payConn.Close() }()
+	payClient := paymentinternal.NewPaymentInternalServiceClient(payConn)
+
+	_, err = payClient.StoreBalance(ctx, &paymentinternal.StoreBalanceRequest{
+		UserID: userResp.UserID,
+		Amount: 200000, // Кладем 2000.00 (больше, чем стоит ноутбук)
+	})
+	if err != nil {
+		log.Fatalf("Failed to deposit money: %v", err)
+	}
+	fmt.Printf("Balance Deposited. User now has funds.\n")
+
+	// 4. Создаем Заказ через OrderService (Port 8084)
+	fmt.Println("\n 4: Creating Order via OrderService (localhost:8084)")
 	orderConn, err := grpc.NewClient("localhost:8084", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("Failed to connect to order: %v", err)
 	}
-	defer func() {
-		_ = orderConn.Close()
-	}()
+	defer func() { _ = orderConn.Close() }()
 	orderClient := orderinternal.NewOrderInternalServiceClient(orderConn)
 
 	orderResp, err := orderClient.CreateOrder(ctx, &orderinternal.CreateOrderRequest{
@@ -84,7 +100,8 @@ func main() {
 		log.Fatalf("Failed to create order: %v", err)
 	}
 
-	fmt.Printf("успех! Order Created. OrderID: %s\n", orderResp.OrderID)
+	fmt.Printf("Order Created. OrderID: %s\n", orderResp.OrderID)
+	fmt.Println("   Now check 'paymentservice' logs. You should see 'funds withdrawn successfully'.")
 }
 
 func toPtr(s string) *string {
