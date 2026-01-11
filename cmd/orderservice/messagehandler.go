@@ -6,10 +6,14 @@ import (
 
 	"gitea.xscloud.ru/xscloud/golib/pkg/application/logging"
 	libio "gitea.xscloud.ru/xscloud/golib/pkg/common/io"
+	"gitea.xscloud.ru/xscloud/golib/pkg/infrastructure/amqp"
 	"gitea.xscloud.ru/xscloud/golib/pkg/infrastructure/mysql"
+	"gitea.xscloud.ru/xscloud/golib/pkg/infrastructure/outbox"
 	"github.com/gorilla/mux"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/sync/errgroup"
+
+	"orderservice/pkg/order/infrastructure/integrationevent"
 )
 
 type messageHandlerConfig struct {
@@ -38,10 +42,20 @@ func messageHandler(logger logging.Logger) *cli.Command {
 				return err
 			}
 			closer.AddCloser(databaseConnector)
-
-			_ = mysql.NewConnectionPool(databaseConnector.TransactionalClient())
+			databaseConnectionPool := mysql.NewConnectionPool(databaseConnector.TransactionalClient())
 
 			amqpConnection := newAMQPConnection(cnf.AMQP, logger)
+
+			amqpEventProducer := amqpConnection.Producer(
+				&amqp.ExchangeConfig{
+					Name:    integrationevent.ExchangeName,
+					Kind:    integrationevent.ExchangeKind,
+					Durable: true,
+				},
+				nil,
+				nil,
+			)
+
 			err = amqpConnection.Start()
 			if err != nil {
 				return err
@@ -50,7 +64,19 @@ func messageHandler(logger logging.Logger) *cli.Command {
 				return amqpConnection.Stop()
 			}))
 
+			outboxEventHandler := outbox.NewEventHandler(outbox.EventHandlerConfig{
+				TransportName:  integrationevent.TransportName,
+				Transport:      integrationevent.NewTransport(logger, amqpEventProducer),
+				ConnectionPool: databaseConnectionPool,
+				Logger:         logger,
+			})
+
 			errGroup := errgroup.Group{}
+
+			errGroup.Go(func() error {
+				return outboxEventHandler.Start(c.Context)
+			})
+
 			errGroup.Go(func() error {
 				router := mux.NewRouter()
 				registerHealthcheck(router)

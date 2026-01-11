@@ -33,7 +33,7 @@ type Database struct {
 }
 
 type AMQP struct {
-	Order          string        `envconfig:"order" required:"true"`
+	Order          string        `envconfig:"user" required:"true"`
 	Password       string        `envconfig:"password" required:"true"`
 	Host           string        `envconfig:"host" required:"true"`
 	ConnectTimeout time.Duration `envconfig:"connect_timeout"`
